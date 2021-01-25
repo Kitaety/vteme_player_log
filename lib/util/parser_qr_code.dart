@@ -1,16 +1,25 @@
-import 'package:vteme_player_log/data/player.dart';
+import 'package:simple_vcard_parser/simple_vcard_parser.dart';
+import 'package:vteme_player_log/data/record.dart';
 
 class ParserQRCode {
-  static Player parse(String code) {
-    print("parse code");
-    code = code.replaceFirst("BEGIN:VCARD\nN:", "");
-    code = code.replaceFirst("\nTITLE:", ";");
-    code = code.replaceFirst("END:VCARD", "");
-
+  static Record parse(String code) {
+    print("parse code:");
     print(code);
 
-    List<String> argPlayer = code.split(';');
+    VCard vc = VCard(code);
 
-    return new Player(argPlayer[1], argPlayer[0], argPlayer[2]);
+    PlayerStatus status;
+    String statusStr = vc.title.toLowerCase();
+
+    if (statusStr == 'друг клуба') {
+      status = PlayerStatus.Friend;
+    } else if (statusStr == 'гость') {
+      status = PlayerStatus.Quest;
+    } else {
+      status = PlayerStatus.Anonim;
+    }
+
+    return new Record(
+        name: vc.name[1], nickName: vc.name[0], status: status.index);
   }
 }

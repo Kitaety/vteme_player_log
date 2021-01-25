@@ -7,7 +7,7 @@ import 'package:vteme_player_log/main_screen.dart';
 import 'package:vteme_player_log/util/parser_qr_code.dart';
 import 'package:vteme_player_log/util/web_service.dart';
 
-import 'data/player.dart';
+import 'data/record.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({
@@ -28,74 +28,75 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     this._context = context;
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Container(
-                  margin: EdgeInsets.all(8),
-                  child: IconButton(
-                      onPressed: () async {
-                        await controller?.toggleFlash();
-                        setState(() {});
-                      },
-                      icon: FutureBuilder(
-                        future: controller?.getFlashStatus(),
-                        builder: (context, snapshot) {
-                          return Icon(
-                            snapshot.data != null
-                                ? snapshot.data
-                                    ? Icons.flash_on
-                                    : Icons.flash_off
-                                : Icons.flash_off,
-                            color: Colors.white,
-                          );
-                        },
-                      )),
-                ),
-                Container(
-                  margin: EdgeInsets.all(8),
-                  child: IconButton(
-                    color: Colors.white,
-                    onPressed: () async {
-                      await controller?.flipCamera();
-                      setState(() {});
-                    },
-                    icon: Icon(Icons.cached),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(flex: 5, child: _buildQrView(context)),
-          Expanded(
-            flex: 1,
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox(
-                child: MaterialButton(
+      appBar: AppBar(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              margin: EdgeInsets.all(8),
+              child: IconButton(
                   onPressed: () async {
-                    await controller.pauseCamera();
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MainScreen()),
-                    );
-                    controller.resumeCamera();
+                    await controller?.toggleFlash();
+                    setState(() {});
                   },
-                  child: Text(
-                    "Список",
-                    style: TextStyle(color: Colors.white),
+                  icon: FutureBuilder(
+                    future: controller?.getFlashStatus(),
+                    builder: (context, snapshot) {
+                      return Icon(
+                        snapshot.data != null
+                            ? snapshot.data
+                                ? Icons.flash_on
+                                : Icons.flash_off
+                            : Icons.flash_off,
+                        color: Colors.white,
+                      );
+                    },
+                  )),
+            ),
+            Container(
+              margin: EdgeInsets.all(8),
+              child: IconButton(
+                color: Colors.white,
+                onPressed: () async {
+                  await controller?.flipCamera();
+                },
+                icon: Icon(Icons.cached),
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            Expanded(flex: 5, child: _buildQrView(context)),
+            Expanded(
+              flex: 1,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  child: FlatButton(
+                    color: Theme.of(context).accentColor,
+                    onPressed: () async {
+                      await controller.pauseCamera();
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => MainScreen()),
+                      );
+                      controller.resumeCamera();
+                    },
+                    child: Text(
+                      "Список",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -108,7 +109,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       key: qrKey,
       cameraFacing: CameraFacing.front,
       onQRViewCreated: _onQRViewCreated,
-      formatsAllowed: [BarcodeFormat.qrcode],
+      formatsAllowed: [
+        BarcodeFormat.qrcode,
+      ],
       overlay: QrScannerOverlayShape(
         borderColor: Colors.red,
         borderRadius: 10,
@@ -126,14 +129,26 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     controller.scannedDataStream.listen((scanData) async {
       await this.controller.pauseCamera();
       print(scanData.code);
-      Player player = ParserQRCode.parse(scanData.code);
-      bool isAddPlayer = await _showDialoge(this._context, player);
+      Record record = ParserQRCode.parse(scanData.code);
+      bool isAddPlayer = await _showDialoge(this._context, record);
 
       if (isAddPlayer) {
-        WebService.addPlayerNowDate(player);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Игрок добавлен"),
-        ));
+        WebService.addRecordNowDate(record).then((value) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text(value ? "Игрок добавлен" : "Не удалось добавить игрока"),
+          ));
+          if (value) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => MainScreen()),
+            );
+          }
+        }).catchError((_) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Ошибка сети"),
+          ));
+        });
       }
 
       await this.controller.resumeCamera();
@@ -141,7 +156,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   }
 
   //
-  Future<bool> _showDialoge(BuildContext context, Player player) async {
+  Future<bool> _showDialoge(BuildContext context, Record record) async {
     return showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -152,7 +167,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    "${player.name} ${player.nickName}",
+                    "${record.name} ${record.nickName}",
                     style: TextStyle(
                       fontSize: 18,
                     ),
@@ -161,7 +176,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     height: 10,
                   ),
                   Text(
-                    "${player.status}",
+                    Record.getStatus(record.status),
                     style: TextStyle(
                       fontSize: 14,
                     ),

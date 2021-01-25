@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:relation/relation.dart' as r;
-import 'data/player.dart';
+import 'calendare_screen.dart';
+import 'data/record.dart';
 import 'util/web_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -12,71 +11,101 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  String code = "code";
-  List<Player> _players;
+  BuildContext _context;
+
+  r.StreamedState<String> _title = new r.StreamedState();
   r.StreamedState<DateTime> _dateState = new r.StreamedState<DateTime>();
 
   r.Action _changeDateAction = new r.Action();
 
-  r.EntityStreamedState<List<Player>> _playersState =
+  r.EntityStreamedState<List<Record>> _recordsState =
       new r.EntityStreamedState();
-
-  // DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     _dateState.accept(DateTime.now());
+    _title.accept(DateFormat('dd-MM-yyyy').format(_dateState.value));
 
-    _playersState.loading();
-    this._players = WebService.getListPlayersOnDay(_dateState.value);
-    _playersState.content(this._players);
-
+    //* смена даты и загрузка нового списка игроков
     this._changeDateAction.stream.listen((_) async {
       DateTime date = await showDatePicker(
-        context: context,
-        initialDate: _dateState.value,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2222),
-      );
+          context: context,
+          locale: const Locale("ru", "RU"),
+          initialDate: _dateState.value,
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2222),
+          builder: (contex, child) {
+            return Theme(
+              data: Theme.of(context),
+              child: child,
+            );
+          });
       if (date != null) {
         _dateState.accept(date);
+        _title.accept(DateFormat('dd-MM-yyyy').format(_dateState.value));
+        _recordsState.loading();
+        WebService.getListRecordsOnDay(_dateState.value)
+            .then((value) => _recordsState.accept(
+                  new r.EntityState(
+                    data: value,
+                  ),
+                ));
       }
     });
+
+    _recordsState.loading();
+    WebService.getListRecordsOnDay(_dateState.value)
+        .then((value) => _recordsState.content(value));
 
     super.initState();
   }
 
   @override
+  void dispose() {
+    _title.dispose();
+    _dateState.dispose();
+    _changeDateAction.dispose();
+    _recordsState.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _context = context;
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.grey,
         centerTitle: true,
         title: FlatButton(
           minWidth: 150,
-          //TODO смена даты
           child: r.StreamedStateBuilder(
-            streamedState: _dateState,
-            builder: (context, date) => Text(
-              DateFormat('dd-MM-yyyy').format(date),
-              style: TextStyle(
-                color: Colors.white,
-              ),
+            streamedState: _title,
+            builder: (context, title) => Text(
+              title,
+              // style: TextStyle(
+              // color: Colors.white,
+              // ),
             ),
           ),
           onPressed: _changeDateAction.accept,
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.today),
-            //TODO загрузка списка всех игроков
-            onPressed: () {},
+          FlatButton(
+            child: Text("Архив"),
+            //* загрузка списка всех игроков
+            onPressed: () {
+              _recordsState.loading();
+              WebService.getListRecords()
+                  .then((value) => _recordsState.content(value));
+              _title.accept("Выбор даты");
+            },
           )
         ],
       ),
       body: Column(children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.amber[900],
+            color: Colors.amber,
             border: Border(
               bottom: BorderSide(color: Colors.black87),
             ),
@@ -90,7 +119,10 @@ class _MainScreenState extends State<MainScreen> {
                   decoration: BoxDecoration(
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.center,
-                  child: Text("п/п"),
+                  child: Text(
+                    "п/п",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
               Expanded(
@@ -101,7 +133,10 @@ class _MainScreenState extends State<MainScreen> {
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 5),
-                  child: Text("Имя"),
+                  child: Text(
+                    "Имя",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
               Expanded(
@@ -112,7 +147,10 @@ class _MainScreenState extends State<MainScreen> {
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 5),
-                  child: Text("Псевдоним"),
+                  child: Text(
+                    "Никнейм",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
               Expanded(
@@ -120,7 +158,10 @@ class _MainScreenState extends State<MainScreen> {
                 child: Container(
                   height: 50,
                   alignment: Alignment.center,
-                  child: Icon(Icons.calendar_today),
+                  child: Icon(
+                    Icons.calendar_today,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -128,21 +169,15 @@ class _MainScreenState extends State<MainScreen> {
         ),
         Expanded(
           child: Container(
-            child: r.EntityStateBuilder<List<Player>>(
-              streamedState: _playersState,
-              child: (contetx, players) => ListView.builder(
-                itemCount: players.length,
-                itemExtent: 50,
-                //TODO окраска в зависимости от статуса
-                itemBuilder: (context, index) => createListItem(
-                  index: "${index + 1}",
-                  name: _playersState.value.data[index].name,
-                  nickName: _playersState.value.data[index].nickName,
-                  action: () => {
-                    //TODO показать календарь с отметками посещения
-                  },
-                ),
-              ),
+            child: r.EntityStateBuilder<List<Record>>(
+              streamedState: _recordsState,
+              child: (contetx, List<Record> record) => ListView.builder(
+                  itemCount: record.length,
+                  itemExtent: 50,
+                  itemBuilder: (context, index) {
+                    print(record[index].nickName);
+                    return createListItem("${index + 1}", record[index]);
+                  }),
               loadingChild: Center(
                   child: CircularProgressIndicator(
                 backgroundColor: Colors.amber[900],
@@ -154,11 +189,14 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget createListItem(
-      {String index, String name, String nickName, void action}) {
+  Widget createListItem(String index, Record record) {
+    print(record.isColor);
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.black87)),
+        color: record.isColor
+            ? getColorOnPlayerStatus(record.status)
+            : Colors.white,
       ),
       child: Row(
         children: [
@@ -182,7 +220,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               alignment: Alignment.centerLeft,
               padding: EdgeInsets.only(left: 5),
-              child: Text(name),
+              child: Text(record.name),
             ),
           ),
           Expanded(
@@ -194,7 +232,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               alignment: Alignment.centerLeft,
               padding: EdgeInsets.only(left: 5),
-              child: Text(nickName),
+              child: Text(record.nickName),
             ),
           ),
           Expanded(
@@ -205,7 +243,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Center(
                 child: IconButton(
                   icon: Icon(Icons.today),
-                  onPressed: () => action,
+                  onPressed: () => showCalendar(record),
                 ),
               ),
             ),
@@ -213,5 +251,26 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
     );
+  }
+
+  void showCalendar(Record record) {
+    Navigator.of(_context).push(
+      MaterialPageRoute(
+        builder: (context) => CalendareScreen(record: record),
+      ),
+    );
+  }
+
+  Color getColorOnPlayerStatus(PlayerStatus status) {
+    switch (status) {
+      case PlayerStatus.Anonim:
+        return Colors.red;
+      case PlayerStatus.Quest:
+        return Colors.yellow;
+      case PlayerStatus.Friend:
+        return Colors.green;
+      default:
+        return Colors.white;
+    }
   }
 }

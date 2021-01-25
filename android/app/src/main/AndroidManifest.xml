@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.vteme_player_log">
+    <uses-permission android:name="android.permission.INTERNET"/>
    <application
-        android:label="vteme_player_log"
+        android:label="VTEME Журнал посещений"
         android:icon="@mipmap/ic_launcher">
+
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
