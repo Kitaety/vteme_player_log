@@ -82,24 +82,43 @@ class _MainScreenState extends State<MainScreen> {
             streamedState: _title,
             builder: (context, title) => Text(
               title,
-              // style: TextStyle(
-              // color: Colors.white,
-              // ),
             ),
           ),
           onPressed: _changeDateAction.accept,
         ),
+        
         actions: [
-          FlatButton(
-            child: Text("Архив"),
-            //* загрузка списка всех игроков
-            onPressed: () {
-              _recordsState.loading();
-              WebService.getListRecords()
-                  .then((value) => _recordsState.content(value));
-              _title.accept("Выбор даты");
+          PopupMenuButton<int>(
+            icon: Icon(Icons.more_vert),
+            onSelected: (value){
+              switch(value){
+                case 0:
+                  _recordsState.loading();
+                  WebService.getListRecords()
+                        .then((value) => _recordsState.content(value));
+                  _title.accept("Выбор даты");
+                  break;
+                case 1:
+                  _recordsState.loading();
+                  WebService.deleteAllRecords();
+                  _recordsState.content(null);
+                  break;
+              }
             },
-          )
+            itemBuilder: (context){
+              return [
+                PopupMenuItem(
+                  value: 0, child: Text("Архив"),
+                  // child:
+                  // //* загрузка списка всех игроков
+                  // onPressed: () {
+                  //
+                  // },
+                ),
+                PopupMenuItem(value: 1,child: Text("Удалить все"),),
+              ];
+            },
+          ),
         ],
       ),
       body: Column(children: [
@@ -119,9 +138,11 @@ class _MainScreenState extends State<MainScreen> {
                   decoration: BoxDecoration(
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.center,
-                  child: Text(
-                    "п/п",
-                    style: TextStyle(color: Colors.white),
+                  child: Center(
+                    child: Text(
+                      "П/П",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
@@ -133,9 +154,11 @@ class _MainScreenState extends State<MainScreen> {
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 5),
-                  child: Text(
-                    "Имя",
-                    style: TextStyle(color: Colors.white),
+                  child: Center(
+                    child: Text(
+                      "ИМЯ",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
@@ -147,9 +170,11 @@ class _MainScreenState extends State<MainScreen> {
                       border: Border(right: BorderSide(color: Colors.black87))),
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 5),
-                  child: Text(
-                    "Никнейм",
-                    style: TextStyle(color: Colors.white),
+                  child: Center(
+                    child: Text(
+                      "ИГРОВОЙ НИК",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),

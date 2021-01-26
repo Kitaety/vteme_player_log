@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:flutter_qr_bar_scanner/qr_bar_scanner_camera.dart';
 import 'package:vteme_player_log/main_screen.dart';
 import 'package:vteme_player_log/util/parser_qr_code.dart';
 import 'package:vteme_player_log/util/web_service.dart';
@@ -19,9 +19,38 @@ class QRScannerScreen extends StatefulWidget {
 }
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  QRViewController controller;
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   BuildContext _context;
+  bool isCam = false;
+
+  _qrCallback(String code) async {
+    setState(() {
+      isCam = true;
+    });
+    print(code);
+    Record record = ParserQRCode.parse(code);
+    bool isAddPlayer = await _showDialoge(this._context, record);
+
+    if (isAddPlayer) {
+      await WebService.addRecordNowDate(record).then((value) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:
+          Text(value ? "Игрок добавлен" : "Не удалось добавить игрока"),
+        ));
+        if (value) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => MainScreen()),
+          );
+        }
+      }).catchError((_) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Ошибка сети"),
+        ));
+      });
+    }
+    isCam = false;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -29,42 +58,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              margin: EdgeInsets.all(8),
-              child: IconButton(
-                  onPressed: () async {
-                    await controller?.toggleFlash();
-                    setState(() {});
-                  },
-                  icon: FutureBuilder(
-                    future: controller?.getFlashStatus(),
-                    builder: (context, snapshot) {
-                      return Icon(
-                        snapshot.data != null
-                            ? snapshot.data
-                                ? Icons.flash_on
-                                : Icons.flash_off
-                            : Icons.flash_off,
-                        color: Colors.white,
-                      );
-                    },
-                  )),
-            ),
-            Container(
-              margin: EdgeInsets.all(8),
-              child: IconButton(
-                color: Colors.white,
-                onPressed: () async {
-                  await controller?.flipCamera();
-                },
-                icon: Icon(Icons.cached),
-              ),
-            ),
-          ],
+        centerTitle: true,
+        title: Text("VTEME Журнал посещения",
+          style: TextStyle(color: Colors.white),
         ),
       ),
       backgroundColor: Colors.black,
@@ -74,22 +70,29 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             Expanded(flex: 5, child: _buildQrView(context)),
             Expanded(
               flex: 1,
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  child: FlatButton(
-                    color: Theme.of(context).accentColor,
-                    onPressed: () async {
-                      await controller.pauseCamera();
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => MainScreen()),
-                      );
-                      controller.resumeCamera();
-                    },
-                    child: Text(
-                      "Список",
-                      style: TextStyle(color: Colors.white),
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                color: Colors.black,
+                child: Center(
+                  child: Container(
+                    width: 120,
+                    height: 45,
+                    child: FlatButton(
+                      height: 50,
+                      color: Theme.of(context).accentColor,
+                      onPressed: () async {
+                        isCam = true;
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => MainScreen()),
+                        );
+                        isCam = false;
+
+                      },
+                      child: Text(
+                        "Список",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
@@ -105,54 +108,53 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     var scanArea = min(MediaQuery.of(context).size.width,
             MediaQuery.of(context).size.height) -
         100;
-    return QRView(
-      key: qrKey,
-      cameraFacing: CameraFacing.front,
-      onQRViewCreated: _onQRViewCreated,
-      formatsAllowed: [
-        BarcodeFormat.qrcode,
-      ],
-      overlay: QrScannerOverlayShape(
-        borderColor: Colors.red,
-        borderRadius: 10,
-        borderLength: 30,
-        borderWidth: 10,
-        cutOutSize: scanArea,
-      ),
-    );
-  }
 
-  void _onQRViewCreated(QRViewController controller) {
-    setState(() {
-      this.controller = controller;
-    });
-    controller.scannedDataStream.listen((scanData) async {
-      await this.controller.pauseCamera();
-      print(scanData.code);
-      Record record = ParserQRCode.parse(scanData.code);
-      bool isAddPlayer = await _showDialoge(this._context, record);
-
-      if (isAddPlayer) {
-        WebService.addRecordNowDate(record).then((value) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text(value ? "Игрок добавлен" : "Не удалось добавить игрока"),
-          ));
-          if (value) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => MainScreen()),
-            );
+    return QRBarScannerCamera(
+        onError: (context, error) => Text(
+          error.toString(),
+          style: TextStyle(color: Colors.red),
+        ),
+        qrCodeCallback: (code) {
+          if(!isCam){
+            _qrCallback(code);
           }
-        }).catchError((_) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Ошибка сети"),
-          ));
-        });
-      }
-
-      await this.controller.resumeCamera();
-    });
+        },
+        child: Stack(
+          children: [
+            Center(
+              child: Container(
+                width: scanArea,
+                height:  scanArea,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            ColorFiltered(
+              colorFilter:  ColorFilter.mode(Colors.black54, BlendMode.srcOut),
+              child: Stack(
+                children: [
+                  Container(
+                    color: Colors.transparent,
+                  ),
+                  Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width-100,
+                      height:  MediaQuery.of(context).size.width-100,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        )
+    );
   }
 
   //
@@ -202,7 +204,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   void dispose() {
-    controller?.dispose();
     super.dispose();
   }
 }

@@ -31,10 +31,11 @@ dependencies:
   flutter_launcher_name: ^0.0.1
   http: ^0.12.2
   intl: ^0.17.0-nullsafety.2
-  qr_code_scanner: ^0.3.0
+#  qr_code_scanner: ^0.3.0
   relation: ^0.0.2
   simple_vcard_parser: ^0.1.6
   table_calendar: ^2.3.3
+  flutter_qr_bar_scanner: ^1.0.2
 
 dev_dependencies:
   flutter_test:
