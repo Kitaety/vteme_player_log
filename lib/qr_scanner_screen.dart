@@ -21,6 +21,7 @@ class QRScannerScreen extends StatefulWidget {
 class _QRScannerScreenState extends State<QRScannerScreen> {
   BuildContext _context;
   bool isCam = false;
+  bool isProccesAdd = false;
 
   _qrCallback(String code) async {
     setState(() {
@@ -34,7 +35,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       await WebService.addRecordNowDate(record).then((value) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content:
-          Text(value ? "Игрок добавлен" : "Не удалось добавить игрока"),
+              Text(value ? "Игрок добавлен" : "Не удалось добавить игрока"),
         ));
         if (value) {
           Navigator.push(
@@ -51,7 +52,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     isCam = false;
   }
 
-
   @override
   Widget build(BuildContext context) {
     this._context = context;
@@ -59,7 +59,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text("VTEME Журнал посещения",
+        title: Text(
+          "VTEME Журнал посещения",
           style: TextStyle(color: Colors.white),
         ),
       ),
@@ -87,7 +88,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                           MaterialPageRoute(builder: (context) => MainScreen()),
                         );
                         isCam = false;
-
                       },
                       child: Text(
                         "Список",
@@ -111,11 +111,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
     return QRBarScannerCamera(
         onError: (context, error) => Text(
-          error.toString(),
-          style: TextStyle(color: Colors.red),
-        ),
+              error.toString(),
+              style: TextStyle(color: Colors.red),
+            ),
         qrCodeCallback: (code) {
-          if(!isCam){
+          if (!isCam) {
             _qrCallback(code);
           }
         },
@@ -124,7 +124,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             Center(
               child: Container(
                 width: scanArea,
-                height:  scanArea,
+                height: scanArea,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.red),
                   borderRadius: BorderRadius.circular(10),
@@ -132,7 +132,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               ),
             ),
             ColorFiltered(
-              colorFilter:  ColorFilter.mode(Colors.black54, BlendMode.srcOut),
+              colorFilter: ColorFilter.mode(Colors.black54, BlendMode.srcOut),
               child: Stack(
                 children: [
                   Container(
@@ -140,8 +140,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   ),
                   Center(
                     child: Container(
-                      width: MediaQuery.of(context).size.width-100,
-                      height:  MediaQuery.of(context).size.width-100,
+                      width: MediaQuery.of(context).size.width - 100,
+                      height: MediaQuery.of(context).size.width - 100,
                       decoration: BoxDecoration(
                         color: Colors.red,
                         border: Border.all(color: Colors.red),
@@ -153,8 +153,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               ),
             ),
           ],
-        )
-    );
+        ));
   }
 
   //
@@ -163,28 +162,32 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         context: context,
         builder: (context) => AlertDialog(
               title: Text("Информация о игроке"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    "${record.name} ${record.nickName}",
-                    style: TextStyle(
-                      fontSize: 18,
+              content: !isProccesAdd
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "${record.name} ${record.nickName}",
+                          style: TextStyle(
+                            fontSize: 18,
+                          ),
+                        ),
+                        Container(
+                          height: 10,
+                        ),
+                        Text(
+                          Record.getStatus(record.status),
+                          style: TextStyle(
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: CircularProgressIndicator(),
                     ),
-                  ),
-                  Container(
-                    height: 10,
-                  ),
-                  Text(
-                    Record.getStatus(record.status),
-                    style: TextStyle(
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
               actions: [
                 FlatButton(
                   child: Text("Отмена"),
@@ -194,6 +197,33 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 ),
                 FlatButton(
                   child: Text("Добавить"),
+                  onPressed: () async {
+                    setState(() {
+                      this.isProccesAdd = true;
+                    });
+                    bool a = await WebService.checkPlayer(record);
+                    if (a)
+                      Navigator.of(context).pop(true);
+                    else {
+                      Navigator.of(context).pop(false);
+                      await _showDialogeError(context, record);
+                    }
+                  },
+                ),
+              ],
+            ));
+  }
+
+  Future<void> _showDialogeError(BuildContext context, Record record) async {
+    return showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Text("Ошибка"),
+              content:
+                  Text("Игрок ${record.name} ${record.nickName} уже добавлен"),
+              actions: [
+                FlatButton(
+                  child: Text("ОК"),
                   onPressed: () {
                     Navigator.of(context).pop(true);
                   },

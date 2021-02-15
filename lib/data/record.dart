@@ -11,6 +11,7 @@
 ///
 
 class Record {
+  int _id;
   String _name;
   String _nickName;
   PlayerStatus _status;
@@ -18,7 +19,13 @@ class Record {
   bool _isColor;
 
   Record(
-      {String name, String nickName, int status, DateTime date, bool isColor}) {
+      {int id,
+      String name,
+      String nickName,
+      int status,
+      DateTime date,
+      bool isColor}) {
+    this._id = id;
     this._name = name;
     this._nickName = nickName;
     this._status = PlayerStatus.values[status];
@@ -26,6 +33,7 @@ class Record {
     this._date = date;
   }
 
+  int get id => _id;
   String get name => _name;
   String get nickName => _nickName;
   PlayerStatus get status => _status;
@@ -55,11 +63,14 @@ class Record {
 
   factory Record.fromJson(Map<String, dynamic> json) {
     return Record(
+      id: json['id'] != null ? int.parse(json['id']) : -1,
       name: json['name'] as String,
       nickName: json['nickName'] as String,
       status: getStatusFromString((json['rang'] as String)).index,
       isColor: (json['is_color'] as String).toLowerCase() == '1',
-      date: json['date']!=null?DateTime.parse((json['date'] as String)):null,
+      date: json['date'] != null
+          ? DateTime.parse((json['date'] as String))
+          : null,
     );
   }
 }

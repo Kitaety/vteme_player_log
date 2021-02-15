@@ -31,8 +31,7 @@ class WebService {
 
   //TODO получить список игроков
   static Future<List<Record>> getListRecords() async {
-    Response response = await Dio()
-        .get("https://anika-cs.by/appnew/player");
+    Response response = await Dio().get("https://anika-cs.by/appnew/player");
     final parsed = jsonDecode(response.data);
 
     print(parsed);
@@ -73,7 +72,7 @@ class WebService {
 
     List<Record> records = p.data;
 
-    List<DateTime> dates = List();
+    List<DateTime> dates = [];
 
     for (Record record in records) {
       dates.add(record.date);
@@ -82,8 +81,30 @@ class WebService {
     return dates;
   }
 
-  static void deleteAllRecords() async{
+  static Future<void> deleteAllRecords() async {
+    await Dio().get("https://anika-cs.by/appnew/record/id/0");
+  }
+
+  static Future<void> deleteRecordsFromDate(DateTime date) async {
+    DateFormat dateFormat = DateFormat("yyyy-MM-dd");
+    print("deletle ${dateFormat.format(date)}");
     await Dio().get(
-        "https://anika-cs.by/appnew/record/0");
+        "https://anika-cs.by/appnew/record/date/${dateFormat.format(date)}");
+  }
+
+  static void deleteRecordsFromId(Record record) async {
+    await Dio().get("https://anika-cs.by/appnew/record/id/${record.id}");
+  }
+
+  static Future<bool> checkPlayer(Record record) async {
+    List<Record> records = await getListRecordsOnDay(DateTime.now());
+    if (records != null)
+      for (Record rec in records) {
+        if (rec.name == record.name && rec.nickName == record.nickName) {
+          return false;
+        }
+      }
+
+    return true;
   }
 }

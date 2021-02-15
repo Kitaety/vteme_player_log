@@ -86,36 +86,43 @@ class _MainScreenState extends State<MainScreen> {
           ),
           onPressed: _changeDateAction.accept,
         ),
-        
         actions: [
           PopupMenuButton<int>(
             icon: Icon(Icons.more_vert),
-            onSelected: (value){
-              switch(value){
+            onSelected: (value) async {
+              switch (value) {
                 case 0:
                   _recordsState.loading();
                   WebService.getListRecords()
-                        .then((value) => _recordsState.content(value));
+                      .then((value) => _recordsState.content(value));
                   _title.accept("Выбор даты");
                   break;
                 case 1:
                   _recordsState.loading();
-                  WebService.deleteAllRecords();
+                  await WebService.deleteAllRecords();
+                  _recordsState.content(null);
+                  break;
+                case 2:
+                  _recordsState.loading();
+                  await WebService.deleteRecordsFromDate(_dateState.value);
                   _recordsState.content(null);
                   break;
               }
             },
-            itemBuilder: (context){
+            itemBuilder: (context) {
               return [
                 PopupMenuItem(
-                  value: 0, child: Text("Архив"),
-                  // child:
-                  // //* загрузка списка всех игроков
-                  // onPressed: () {
-                  //
-                  // },
+                  value: 0,
+                  child: Text("Архив"),
                 ),
-                PopupMenuItem(value: 1,child: Text("Удалить все"),),
+                PopupMenuItem(
+                  value: 1,
+                  child: Text("Удалить все"),
+                ),
+                PopupMenuItem(
+                  value: 2,
+                  child: Text("Удалить декущую дату"),
+                ),
               ];
             },
           ),
@@ -216,64 +223,81 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget createListItem(String index, Record record) {
     print(record.isColor);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.black87)),
-        color: record.isColor
-            ? getColorOnPlayerStatus(record.status)
-            : Colors.white,
+    return Dismissible(
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        child: Icon(Icons.delete_forever),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.black87)),
+      key: Key(record.name + ' ' + record.nickName),
+      onDismissed: (direction) async {
+        await WebService.deleteRecordsFromId(record);
+        List<Record> records = _recordsState.value.data;
+        records.remove(record);
+        _recordsState.content(records);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("${record.name} ${record.nickName} удален"),
+        ));
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.black87)),
+          color: record.isColor
+              ? getColorOnPlayerStatus(record.status)
+              : Colors.white,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: Colors.black87)),
+                ),
+                alignment: Alignment.center,
+                child: Text(index),
               ),
-              alignment: Alignment.center,
-              child: Text(index),
             ),
-          ),
-          Expanded(
-            flex: 4,
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.black87)),
+            Expanded(
+              flex: 4,
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: Colors.black87)),
+                ),
+                alignment: Alignment.centerLeft,
+                padding: EdgeInsets.only(left: 5),
+                child: Text(record.name),
               ),
-              alignment: Alignment.centerLeft,
-              padding: EdgeInsets.only(left: 5),
-              child: Text(record.name),
             ),
-          ),
-          Expanded(
-            flex: 4,
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.black87)),
+            Expanded(
+              flex: 4,
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: Colors.black87)),
+                ),
+                alignment: Alignment.centerLeft,
+                padding: EdgeInsets.only(left: 5),
+                child: Text(record.nickName),
               ),
-              alignment: Alignment.centerLeft,
-              padding: EdgeInsets.only(left: 5),
-              child: Text(record.nickName),
             ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              height: 50,
-              padding: EdgeInsets.only(right: 5),
-              child: Center(
-                child: IconButton(
-                  icon: Icon(Icons.today),
-                  onPressed: () => showCalendar(record),
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: 50,
+                padding: EdgeInsets.only(right: 5),
+                child: Center(
+                  child: IconButton(
+                    icon: Icon(Icons.today),
+                    onPressed: () => showCalendar(record),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
