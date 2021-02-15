@@ -121,7 +121,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 PopupMenuItem(
                   value: 2,
-                  child: Text("Удалить декущую дату"),
+                  child: Text("Удалить текущую дату"),
                 ),
               ];
             },
